@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Collections.Generic;
 
 namespace HoneyBearExpress.Core
 {
@@ -10,8 +11,6 @@ namespace HoneyBearExpress.Core
         private float _tickInterval;
         private float _tickTimer;
         private bool _isRunning;
-        
-        public event Action<long> OnTick;
         
         public int TicksPerSecond
         {
@@ -27,11 +26,28 @@ namespace HoneyBearExpress.Core
         public long CurrentTick { get; private set; }
         public float TickInterval => _tickInterval;
         
+        private readonly List<ITickable> _tickables = new List<ITickable>(1024);
+
         private void Awake()
         {
             TicksPerSecond = ticksPerSecond;
         }
-        
+        private void Start()
+        {
+            StartTicking();
+        }
+
+        public void RegisterTickable(ITickable tickable)
+        {
+            if (!_tickables.Contains(tickable))
+                _tickables.Add(tickable);
+        }
+
+        public void UnregisterTickable(ITickable tickable)
+        {
+            _tickables.Remove(tickable);
+        }
+
         private void Update()
         {
             if (!_isRunning) return;
@@ -42,7 +58,12 @@ namespace HoneyBearExpress.Core
             {
                 _tickTimer -= _tickInterval;
                 CurrentTick++;
-                OnTick?.Invoke(CurrentTick);
+                
+                // Güvenli ve hızlı iterasyon
+                for (int i = 0; i < _tickables.Count; i++)
+                {
+                    _tickables[i].OnTick(CurrentTick);
+                }
             }
         }
         

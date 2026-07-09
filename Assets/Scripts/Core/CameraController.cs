@@ -17,7 +17,6 @@ namespace HoneyBearExpress.Core
         
         private Camera _camera;
         private bool _isDragging;
-        private float _currentZoomDistance;
         
         // TODO: Replace Unity Input with project InputService for touch support
         
@@ -26,7 +25,6 @@ namespace HoneyBearExpress.Core
             _camera = GetComponent<Camera>();
             
             transform.rotation = Quaternion.Euler(rotationEuler);
-            _currentZoomDistance = transform.position.y;
         }
         
         private void Update()
@@ -76,16 +74,7 @@ namespace HoneyBearExpress.Core
             if (Mathf.Abs(scrollDelta) > 0.01f)
             {
                 float zoomChange = scrollDelta * zoomSpeed * Time.deltaTime;
-                _currentZoomDistance = Mathf.Clamp(_currentZoomDistance - zoomChange, minZoomDistance, maxZoomDistance);
-                
-                Vector3 forward = transform.forward;
-                float yRatio = forward.y;
-                
-                if (Mathf.Abs(yRatio) > 0.001f)
-                {
-                    float distanceToMove = (transform.position.y - _currentZoomDistance) / yRatio;
-                    transform.position += forward * distanceToMove;
-                }
+                transform.position += transform.forward * zoomChange;
             }
         }
     }

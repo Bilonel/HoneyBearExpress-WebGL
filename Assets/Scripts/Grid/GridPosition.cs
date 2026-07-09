@@ -45,7 +45,7 @@ namespace HoneyBearExpress.Grid
         
         public override int GetHashCode()
         {
-            return HashCode.Combine(X, Y);
+            return (X.GetHashCode() * 397) ^ Y.GetHashCode();
         }
         
         public override string ToString()
