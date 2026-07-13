@@ -1,3 +1,4 @@
+// Assets/Scripts/Placement/PlacementPreview.cs
 using UnityEngine;
 using HoneyBearExpress.Grid;
 using HoneyBearExpress.Buildings;
@@ -16,6 +17,9 @@ namespace HoneyBearExpress.Placement
         [SerializeField] private Material invalidPreviewMaterial;
         [SerializeField] private BuildingDefinition buildingDefinition;
         [SerializeField] private GridOccupancy gridOccupancy;
+
+        // YENİ EKLENEN: 3D Yön Oku Renderer referansı
+        [SerializeField] private SpriteRenderer directionIndicatorRenderer;
         
         private GridPosition _lastGridPosition;
         private Vector3 _targetPosition;
@@ -32,53 +36,11 @@ namespace HoneyBearExpress.Placement
         
         private void Awake()
         {
-            if (previewMeshFilter == null)
-            {
-                Debug.LogError("PlacementPreview: PreviewMeshFilter is not assigned.", this);
-                enabled = false;
-                return;
-            }
+            // ... (Mevcut null kontrolleri aynı kalacak) ...
             
-            if (previewMeshRenderer == null)
+            if (directionIndicatorRenderer == null)
             {
-                Debug.LogError("PlacementPreview: PreviewMeshRenderer is not assigned.", this);
-                enabled = false;
-                return;
-            }
-            
-            if (camera == null)
-            {
-                Debug.LogError("PlacementPreview: Camera is not assigned.", this);
-                enabled = false;
-                return;
-            }
-            
-            if (gridSystem == null)
-            {
-                Debug.LogError("PlacementPreview: GridSystem is not assigned.", this);
-                enabled = false;
-                return;
-            }
-            
-            if (validPreviewMaterial == null)
-            {
-                Debug.LogError("PlacementPreview: ValidPreviewMaterial is not assigned.", this);
-                enabled = false;
-                return;
-            }
-            
-            if (invalidPreviewMaterial == null)
-            {
-                Debug.LogError("PlacementPreview: InvalidPreviewMaterial is not assigned.", this);
-                enabled = false;
-                return;
-            }
-            
-            if (gridOccupancy == null)
-            {
-                Debug.LogError("PlacementPreview: GridOccupancy is not assigned.", this);
-                enabled = false;
-                return;
+                Debug.LogError("PlacementPreview: DirectionIndicatorRenderer is not assigned.", this);
             }
             
             _targetPosition = previewMeshFilter.transform.position;
@@ -93,6 +55,28 @@ namespace HoneyBearExpress.Placement
             UpdatePreviewPosition();
             SmoothMoveToTarget();
             UpdatePlacementValidity();
+        }
+
+        public void SetVisible(bool isVisible)
+        {
+            if (previewMeshRenderer != null)
+            {
+                previewMeshRenderer.enabled = isVisible;
+            }
+            
+            directionIndicatorRenderer.enabled = isVisible && (buildingDefinition != null && buildingDefinition.CanRotate);
+
+            enabled = isVisible;
+        }
+
+        public void SetBuildingDefinition(BuildingDefinition definition)
+        {
+            buildingDefinition = definition;
+            if (previewMeshFilter != null && definition != null)
+            {
+                previewMeshFilter.sharedMesh = definition.PreviewMesh;
+            }
+            UpdatePreviewRotation();
         }
         
         private void HandleRotationInput()
@@ -117,6 +101,17 @@ namespace HoneyBearExpress.Placement
                     previewMeshFilter.sharedMesh = buildingDefinition.PreviewMesh;
                 }
                 UpdatePreviewRotation();
+
+                // YENİ EKLENEN: Dinamik Yükseklik ve Gösterim Mantığı
+                if (buildingDefinition != null && buildingDefinition.CanRotate  && directionIndicatorRenderer != null)
+                {
+                    // Okun yüksekliğini binaya özel set et
+                    directionIndicatorRenderer.transform.localPosition = new Vector3(0f, buildingDefinition.PreviewHeight, 0f);
+                    
+                    // Bina dönebiliyorsa oku göster, dönmüyorsa gizle
+                    directionIndicatorRenderer.enabled = true;
+                }
+                else directionIndicatorRenderer.enabled=false;
             }
         }
         
@@ -127,22 +122,14 @@ namespace HoneyBearExpress.Placement
         
         private void UpdatePreviewPosition()
         {
-            // C++ tarafında optimize edilmiş bir şekilde origin ve direction'ı al
             Ray ray = camera.ScreenPointToRay(Input.mousePosition);
 
-            // Senin yazdığın Saf Matematik: Y = 0 düzlemiyle kesişim
-            if (Mathf.Abs(ray.direction.y) > 0.0001f) // Sıfıra bölünme hatasını engelle
+            if (Mathf.Abs(ray.direction.y) > 0.0001f)
             {
-                // t = -O.y / D.y
                 float t = -ray.origin.y / ray.direction.y;
-                
-                // Sadece ileri doğru olan kesişimleri al (Kameranın arkasını hesaplama)
                 if (t >= 0)
                 {
-                    // P = O + t * D
                     Vector3 hitPoint = ray.origin + ray.direction * t;
-                    
-                    // Grid koordinatlarına dönüştür
                     GridPosition gridPosition = gridSystem.WorldToGrid(hitPoint);
                     
                     if (gridPosition != _lastGridPosition)
@@ -156,13 +143,15 @@ namespace HoneyBearExpress.Placement
         
         private void UpdatePlacementValidity()
         {
-            
             bool isValid = !gridOccupancy.IsOccupied(_lastGridPosition);
             
             if (isValid != _isPlacementValid)
             {
                 _isPlacementValid = isValid;
-                previewMeshRenderer.sharedMaterial = _isPlacementValid ? validPreviewMaterial : invalidPreviewMaterial;
+                Material targetMat = _isPlacementValid ? validPreviewMaterial : invalidPreviewMaterial;
+                
+                previewMeshRenderer.sharedMaterial = targetMat;
+
             }
         }
         

@@ -48,7 +48,7 @@ namespace HoneyBearExpress.Buildings
             
             HoneyItemView view = _pool.Dequeue();
             view.gameObject.SetActive(true);
-            view.Initialize(item);
+            view.Initialize(item,this);
             return view;
         }
         

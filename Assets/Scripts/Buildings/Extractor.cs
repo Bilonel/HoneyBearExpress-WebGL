@@ -4,7 +4,7 @@ using HoneyBearExpress.Grid;
 
 namespace HoneyBearExpress.Buildings
 {
-    public class Extractor : BuildingProcessor, IConveyorConnectable, IItemReceiver
+    public class Extractor : BuildingProcessor, IConveyorConnectable, IItemReceiver,IMachineStatus
     {
         [Header("Production Settings")]
         [SerializeField] private int processingTicks = 20; // İşlem süresi
@@ -139,5 +139,31 @@ namespace HoneyBearExpress.Buildings
             _currentProcessTimer = 0; // Doğrudan aktarımda da sayacı sıfırla
             return true;
         }
+        public float GetProgress()
+{
+    if (!HasItem || _currentItem.Type != HoneyItemType.Honeycomb) return 0f;
+    return (float)_currentProcessTimer / processingTicks;
+}
+
+public bool IsUnconnected()
+{
+    // Giriş VEYA çıkış bandı bağlı değilse bağlantı eksiktir
+    return InputConveyor == null || OutputConveyor == null;
+}
+
+public bool IsClogged()
+{
+    // Ürün hazır (FilteredHoney) ama çıkış bandına itilemiyor (çıkış bandı doluysa)
+    return HasItem && 
+           _currentItem.Type == HoneyItemType.FilteredHoney && 
+           OutputConveyor != null && 
+           OutputConveyor.HasItem;
+}
+
+public bool IsActiveProcessing()
+{
+    // Bağlantılar tamsa, tıkanıklık yoksa ve üretim sürüyorsa aktiftir
+    return HasItem && !IsClogged() && !IsUnconnected();
+}
     }
 }

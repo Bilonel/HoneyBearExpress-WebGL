@@ -13,15 +13,27 @@ namespace HoneyBearExpress.Core
         [SerializeField] private ConveyorRegistry conveyorRegistry;
         [SerializeField] private HoneyItemViewPool honeyItemViewPool;
         [SerializeField] private HoneyItemViewRegistry honeyItemViewRegistry;
-        
+        [SerializeField] private PlayerStatsManager playerStatsManager;        
+        [SerializeField] private UI.PlayerStatsUI playerStatsUI;
+	[SerializeField] private Placement.BuildingPlacement buildingPlacement;
+	[SerializeField] private QuestManager questManager;
         public TickManager TickManager => tickManager;
         public GridSystem GridSystem => gridSystem;
         public GridOccupancy GridOccupancy => gridOccupancy;
         public ConveyorRegistry ConveyorRegistry => conveyorRegistry;
         public HoneyItemViewPool HoneyItemViewPool => honeyItemViewPool;
         public HoneyItemViewRegistry HoneyItemViewRegistry => honeyItemViewRegistry;
+        public PlayerStatsManager PlayerStatsManager => playerStatsManager;
+        public UI.PlayerStatsUI PlayerStatsUI => playerStatsUI;
+	public Placement.BuildingPlacement BuildingPlacement => buildingPlacement;
+	public QuestManager QuestManager => questManager;
+
+        [SerializeField] ConveyorSystem conveyorSystem;
+        [SerializeField] ShippingDock shippingDock;
+        [SerializeField] private UI.LevelUpUI levelUpUI;
+	[SerializeField] private UI.ConstructionMenuUI constructionMenuUI; // Yeni Eklenen
+	[SerializeField] private UI.QuestPanelUI questPanelUI;
         
-        [SerializeField] ConveyorSystem initializable1;
         private void Awake()
         {
             if (tickManager == null)
@@ -56,7 +68,20 @@ namespace HoneyBearExpress.Core
         }
         void Start()
         {
-            initializable1.Initialize(this);
+        	try
+        	{
+			shippingDock.Initialize(this);
+			conveyorSystem.Initialize(this);
+			playerStatsManager.Initialize(this);     
+			playerStatsUI.Initialize(this);
+			levelUpUI.Initialize(this);
+			constructionMenuUI.Initialize(this);
+			questManager.Initialize(this);
+			questPanelUI.Initialize(this);
+        	}
+        	catch(System.Exception e)
+        	{
+        		Debug.Log("World Services : Some systems are null!");
+        	}
         }
-    }
-}
+}}

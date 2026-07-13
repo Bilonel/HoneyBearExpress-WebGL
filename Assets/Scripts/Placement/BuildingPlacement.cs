@@ -1,3 +1,4 @@
+// Assets/Scripts/Placement/BuildingPlacement.cs
 using UnityEngine;
 using HoneyBearExpress.Buildings;
 using HoneyBearExpress.Grid;
@@ -7,15 +8,15 @@ namespace HoneyBearExpress.Placement
 {
     public class BuildingPlacement : MonoBehaviour
     {
-        [SerializeField] private BuildingDefinition currentBuildingDefinition;
-        [SerializeField] private BuildingDefinition hiveDefinition;
-        [SerializeField] private BuildingDefinition conveyorDefinition;
-        [SerializeField] private BuildingDefinition extractorDefinition;
         [SerializeField] private PlacementPreview placementPreview;
         [SerializeField] private GridOccupancy gridOccupancy;
         [SerializeField] private ConveyorRegistry conveyorRegistry;
         [SerializeField] private WorldServices worldServices;
         
+        private PlayerStatsManager _statsManager;
+        private BuildingDefinition _currentBuildingDefinition;
+        private bool _isPlacementActive = false;
+
         private static readonly GridPosition[] NeighborOffsets = new[]
         {
             GridPosition.North,
@@ -24,73 +25,92 @@ namespace HoneyBearExpress.Placement
             GridPosition.West
         };
         
-        public BuildingDefinition CurrentBuildingDefinition => currentBuildingDefinition;
-        
+        public bool IsPlacementActive => _isPlacementActive;
+        public BuildingDefinition CurrentBuildingDefinition => _currentBuildingDefinition;
+
+        private void Start()
+        {
+            if (worldServices != null)
+            {
+                _statsManager = worldServices.PlayerStatsManager;
+            }
+            
+            ExitPlacementMode(); // Başlangıçta inşaat modu kapalı
+        }
+
         private void Update()
         {
+            if (!_isPlacementActive) return;
+
+            // Sol Tık: Yerleştir
             if (Input.GetMouseButtonDown(0))
             {
                 PlaceBuilding();
             }
 
-            if (Input.GetKeyDown(KeyCode.Alpha1))
+            // Sağ Tık veya ESC: İnşaat modundan çık
+            if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.Escape))
             {
-                currentBuildingDefinition = hiveDefinition;
+                ExitPlacementMode();
             }
+        }
 
-            if (Input.GetKeyDown(KeyCode.Alpha2))
+        // UI Butonları bu fonksiyonu çağıracak
+        public void EnterPlacementMode(BuildingDefinition definition)
+        {
+            if (definition == null) return;
+
+            _currentBuildingDefinition = definition;
+            _isPlacementActive = true;
+
+            if (placementPreview != null)
             {
-                currentBuildingDefinition = conveyorDefinition;
+                // Önizlemeyi aktifleştir ve yeni bina tipini ata
+                placementPreview.SetVisible(true);
+                // NOT: PlacementPreview içindeki buildingDefinition alanını güncellemeliyiz:
+                // Bunu yapmak için PlacementPreview'a yeni bir metod ekleyeceğiz (aşağıda görebilirsin).
+                placementPreview.SetBuildingDefinition(definition);
             }
+        }
 
-            if (Input.GetKeyDown(KeyCode.Alpha3))
+        public void ExitPlacementMode()
+        {
+            _currentBuildingDefinition = null;
+            _isPlacementActive = false;
+
+            if (placementPreview != null)
             {
-                currentBuildingDefinition = extractorDefinition;
+                placementPreview.SetVisible(false);
             }
         }
         
         private void PlaceBuilding()
         {
-            if (currentBuildingDefinition == null)
+            if (_currentBuildingDefinition == null || placementPreview == null || 
+                gridOccupancy == null || conveyorRegistry == null || _statsManager == null)
             {
                 return;
             }
-            
-            if (placementPreview == null)
-            {
-                return;
-            }
-            
-            if (gridOccupancy == null)
-            {
-                return;
-            }
-            
-            if (conveyorRegistry == null)
-            {
-                return;
-            }
-            
-            if (worldServices == null)
-            {
-                return;
-            }
-            
-            if (currentBuildingDefinition.Prefab == null)
-            {
-                return;
-            }
-            
+
+            // 1. Grid Kontrolü
             GridPosition gridPosition = placementPreview.CurrentGridPosition;
-            
             if (gridOccupancy.IsOccupied(gridPosition))
             {
+                Debug.LogWarning("Grid hücresi zaten dolu!");
                 return;
             }
+
+            // 2. Para Kontrolü ve Satın Alma (TrySpendCoins)
+            if (!_statsManager.TrySpendCoins(_currentBuildingDefinition.Cost))
+            {
+                Debug.LogWarning("Yetersiz bakiye! İnşaat yapılamadı.");
+                return; // Satın alamazsa inşaatı iptal et
+            }
             
+            // 3. İnşa Etme Logic'i (Aynı kalacak)
             Vector3 position = placementPreview.CurrentWorldPosition;
             Quaternion rotation = placementPreview.CurrentRotation;
-            GameObject building = Instantiate(currentBuildingDefinition.Prefab, position, rotation);
+            GameObject building = Instantiate(_currentBuildingDefinition.Prefab, position, rotation);
             gridOccupancy.TryRegister(gridPosition, building);
             
             IWorldInitializable initializable = building.GetComponent<IWorldInitializable>();
@@ -114,12 +134,12 @@ namespace HoneyBearExpress.Placement
             IConveyorConnectable connectable = building.GetComponent<IConveyorConnectable>();
             if (connectable != null)
             {
-                connectable.RefreshConnections(conveyorRegistry, gridOccupancy);
-                RefreshNeighborConnections(gridPosition, gridOccupancy);
+                connectable.RefreshConnections(conveyorRegistry,gridOccupancy);
+                RefreshNeighborConnections(gridPosition);
             }
         }
         
-        private void RefreshNeighborConnections(GridPosition position, GridOccupancy gridOccupancy)
+        private void RefreshNeighborConnections(GridPosition position)
         {
             foreach (GridPosition offset in NeighborOffsets)
             {
@@ -129,7 +149,7 @@ namespace HoneyBearExpress.Placement
                 if (building != null &&
                     building.TryGetComponent<IConveyorConnectable>(out var connectable))
                 {
-                    connectable.RefreshConnections(conveyorRegistry, gridOccupancy);
+                    connectable.RefreshConnections(conveyorRegistry,gridOccupancy);
                 }    
             }
         }

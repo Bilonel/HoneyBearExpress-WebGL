@@ -4,7 +4,7 @@ using HoneyBearExpress.Grid;
 
 namespace HoneyBearExpress.Buildings
 {
-    public class Hive : BuildingProcessor, IConveyorConnectable
+    public class Hive : BuildingProcessor, IConveyorConnectable,IMachineStatus
     {
         [SerializeField] private int productionInterval = 10;
         
@@ -13,7 +13,8 @@ namespace HoneyBearExpress.Buildings
         private GridSystem gridSystem;
         private ConveyorRegistry conveyorRegistry;
         private Conveyor _outputConveyor;
-        
+        private int _currentTicksElapsed = 0; // İlerlemeyi (Progress) ölçmek için sayaç
+
         private static int _nextHoneyId = 0;
         
         public override void Initialize(WorldServices services)
@@ -77,21 +78,25 @@ namespace HoneyBearExpress.Buildings
         
         protected override void ProcessTick(long tick)
         {
-            if (tick % productionInterval != 0)
+             _currentTicksElapsed++;
+
+            if (_outputConveyor == null || _outputConveyor.HasItem)
             {
+                // Tıkalı veya bağlantı yoksa sayacı ilerletme, bekle
+                _currentTicksElapsed = Mathf.Clamp(_currentTicksElapsed - 1, 0, productionInterval);
                 return;
             }
             
-            if (_outputConveyor == null)
+            if (_currentTicksElapsed >= productionInterval)
             {
-                return;
+                ProduceItem();
+                _currentTicksElapsed = 0;
             }
-            
-            if (_outputConveyor.HasItem)
-            {
-                return;
-            }
-            
+        }
+        
+        
+        private void ProduceItem()
+        {
             HoneyItem item = new HoneyItem(_nextHoneyId++, HoneyItemType.Honeycomb);
             bool inserted = _outputConveyor.TryInsert(item);
             
@@ -106,6 +111,28 @@ namespace HoneyBearExpress.Buildings
                     viewRegistry.Register(item, view);
                 }
             }
+        }
+
+        // --- IMachineStatus Arayüz Metotları ---
+
+        public float GetProgress()
+        {
+            return (float)_currentTicksElapsed / productionInterval;
+        }
+
+        public bool IsUnconnected()
+        {
+            return _outputConveyor == null;
+        }
+
+        public bool IsClogged()
+        {
+            return _outputConveyor != null && _outputConveyor.HasItem;
+        }
+
+        public bool IsActiveProcessing()
+        {
+            return _outputConveyor != null && !_outputConveyor.HasItem;
         }
     }
 }

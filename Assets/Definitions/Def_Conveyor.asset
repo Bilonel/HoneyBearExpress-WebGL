@@ -18,3 +18,5 @@ MonoBehaviour:
   previewMesh: {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
   gridSize: {x: 2, y: 1}
   canRotate: 1
+  cost: 0
+  previewHeight: 1.1

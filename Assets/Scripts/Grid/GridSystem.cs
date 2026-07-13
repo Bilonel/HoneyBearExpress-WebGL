@@ -14,8 +14,8 @@ namespace HoneyBearExpress.Grid
         public GridPosition WorldToGrid(Vector3 worldPosition)
         {
             Vector3 localPosition = worldPosition - transform.position;
-            int x = Mathf.RoundToInt(localPosition.x / cellSize);
-            int y = Mathf.RoundToInt(localPosition.z / cellSize);
+            int x = Mathf.FloorToInt(localPosition.x / cellSize);
+            int y = Mathf.FloorToInt(localPosition.z / cellSize);
             return new GridPosition(x, y);
         }
         

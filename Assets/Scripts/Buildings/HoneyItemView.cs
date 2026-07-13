@@ -19,12 +19,16 @@ namespace HoneyBearExpress.Buildings
         
         private float _moveSpeed = 5f;
         private Vector3 _targetPosition;
-        
-        public void Initialize(HoneyItem item)
+
+        private HoneyItemViewPool _pool;
+        private bool _releaseOnArrival;
+
+        public void Initialize(HoneyItem item,HoneyItemViewPool pool)
         {
             Item = item;
             _targetPosition = transform.position;
             UpdateVisuals(item.Type); // İlk spawn olduğunda tipine göre görsel ayarla
+            _pool=pool;
         }
           
         // Obje silinmeden, GC üretmeden görseli anında değiştirir
@@ -40,9 +44,15 @@ namespace HoneyBearExpress.Buildings
                 }
             }
         }
+        public void ReleaseDeferred()
+        {
+            _releaseOnArrival = true;
+        }
+
         public void Release()
         {
             Item = null;
+            _releaseOnArrival = false;
         }
         
         public void SetTargetPosition(Vector3 position)
@@ -68,6 +78,15 @@ namespace HoneyBearExpress.Buildings
                 _targetPosition,
                 _moveSpeed * Time.deltaTime
             );
+
+            // Hedefe ulaştıysa ve ertelenmiş silme aktifse havuza dön
+            if (_releaseOnArrival && Vector3.Distance(transform.position,_targetPosition)<.02f)
+            {
+                if (_pool != null)
+                {
+                    _pool.Release(this);
+                }
+            }
         }
     }
 }

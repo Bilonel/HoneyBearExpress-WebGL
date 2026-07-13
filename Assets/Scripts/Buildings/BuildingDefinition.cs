@@ -11,6 +11,8 @@ namespace HoneyBearExpress.Buildings
         [SerializeField] private Mesh previewMesh;
         [SerializeField] private Vector2Int gridSize;
         [SerializeField] private bool canRotate;
+	[SerializeField] private int cost = 10;
+	[SerializeField] private float previewHeight = 0.8f;
         
         public string BuildingName => buildingName;
         public BuildingType BuildingType => buildingType;
@@ -18,5 +20,8 @@ namespace HoneyBearExpress.Buildings
         public Mesh PreviewMesh => previewMesh;
         public Vector2Int GridSize => gridSize;
         public bool CanRotate => canRotate;
+	public int Cost => cost;
+	public float PreviewHeight => previewHeight;
+
     }
 }
